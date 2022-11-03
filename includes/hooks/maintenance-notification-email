@@ -8,6 +8,7 @@ use WHMCS\CustomField\CustomFieldValue;
  * Network Issue Notification Emails 
  *
  * @package    WHMCS
+ * Solace link: https://whmcs.community/topic/307489-email-notifications-for-network-issues-or-outages/
  * @author     Lee Mahoney <lee@leemahoney.dev>
  * @copyright  Copyright (c) Lee Mahoney 2022
  * @license    MIT License
@@ -21,8 +22,11 @@ if (!defined('WHMCS')) {
 
 function network_issue_notification_emails($vars) {
 
-    # Checkbox Custom Field ID
-    $customFieldID = 8;
+    # Checkbox Custom Field ID  - if you have one that checks if your client has given permission to be kept informed.
+    # Basically create a custom field for the clients profile and ensure its of type checkbox. 
+    # Head over to your database and note the custom field ID as you'll need to input it into the hook.
+    
+    $customFieldID = 8;  
 
     # Enter the custom email template you wish to send when the Network Issue is created with the relevant status.
     # Leave the mapping empty if you do not want an email sent if the status matches eg. Outage => '',
