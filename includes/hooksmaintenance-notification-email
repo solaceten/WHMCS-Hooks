@@ -1,0 +1,93 @@
+<?php
+
+use WHMCS\Product\Server;
+use WHMCS\Service\Service;
+use WHMCS\CustomField\CustomFieldValue;
+
+/**
+ * Network Issue Notification Emails 
+ *
+ * @package    WHMCS
+ * @author     Lee Mahoney <lee@leemahoney.dev>
+ * @copyright  Copyright (c) Lee Mahoney 2022
+ * @license    MIT License
+ * @version    1.0.0
+ * @link       https://leemahoney.dev
+ */
+
+if (!defined('WHMCS')) {
+    die('You cannot access this file directly.');
+}
+
+function network_issue_notification_emails($vars) {
+
+    # Checkbox Custom Field ID
+    $customFieldID = 8;
+
+    # Enter the custom email template you wish to send when the Network Issue is created with the relevant status.
+    # Leave the mapping empty if you do not want an email sent if the status matches eg. Outage => '',
+    # Format is 'status' => 'email-template',
+    $statusEmailTemplateMappings = [
+        'Reported'      => '',
+        'Investigating' => '',
+        'In Progress'   => '',
+        'Outage'        => '',
+        'Scheduled'     => '',
+        'Resolved'      => '',
+    ];
+
+    # Statuses of the services you wish to check
+    $allowedServiceStatuses = ['Active', 'Suspended'];
+
+    /* -------------------------------------------------------------------------------------------------------------------- */
+
+    $server = $vars['server'];
+    $status = $vars['status'];
+
+    # Either the status is not listed above or the mapping is empty, stop execution.
+    if (!array_key_exists($status, $statusEmailTemplateMappings) || empty($statusEmailTemplateMappings[$status])) {
+        return;
+    }
+
+    # Otherwise list the active services attached to the server, grab the client and check the custom field for that particular client is "on". If its not, stop execution. Otherwise.. send the email.
+    $affectedServices = Service::where('server', $server)->whereIn('domainstatus', $allowedServiceStatuses)->get();
+
+    # Loop through the affected services
+    foreach ($affectedServices as $service) {
+
+        # Grab the custom field value for notifications
+        $customFieldValue = CustomFieldValue::where(['fieldid' => $customFieldID, 'relid' => $service->client->id])->first();
+
+        # If the client does not have the notification enabled, break out of this loop
+        if ($customFieldValue->value != 'on') {
+            continue;
+        }
+
+        # Otherwise send the email
+        $result = localAPI('SendEmail', [
+            'messagename'   => $statusEmailTemplateMappings[$status],
+            'id'            => $service->client->id,
+            'customvars'    => [
+                'startdate'     => $vars['startdate'],
+                'enddate'       => $vars['enddate'],
+                'title'         => $vars['title'],
+                'description'   => $vars['description'],
+                'type'          => $vars['type'],
+                'server'        => Server::where('id', $server)->first(),
+                'affecting'     => $vars['affecting'],
+                'priority'      => $vars['priority'],
+                'status'        => $vars['status'],
+                'service'       => $service,
+            ],
+        ]);
+
+      	# If the email does not send for any reason, log it so we've a paper trail.
+        if ($result['result'] != 'success') {
+            logActivity("Unable to send network issue notification email, the following error was returned: " . $result['message'], $service->client->id);
+        }
+
+    }
+
+}
+
+add_hook('NetworkIssueAdd', 1, 'network_issue_notification_emails');
