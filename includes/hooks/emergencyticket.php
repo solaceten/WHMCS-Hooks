@@ -25,11 +25,8 @@ function hook_send_emergency_email($vars) {
 	//if (in_array($vars['deptid'], $criticaldept)) {
 	if (in_array($departmentid, $criticaldept)) {
         
-    //if (!in_array($request->pass, $access_pass))
-         //in_array($request->pass, $access_pass ?? [])      
-            
-            
-	    // Send email to admin
+ 
+ // Send email to admin
         $to = 'domemeailetc@gmail.com';
 		  
         // e-mail subject
